@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "singleton.h"
+#include "thread.h"
 #include "utils.h"
 
 namespace sylar {
@@ -137,6 +138,7 @@ class LogAppender {
 
  public:
   using ptr = std::shared_ptr<LogAppender>;
+  using Mutextype = Mutex;
   virtual ~LogAppender(){};
 
   virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0;
@@ -145,13 +147,14 @@ class LogAppender {
 
   void setFormatter(LogFormatter::ptr val);
 
-  LogFormatter::ptr getFormatter() const { return m_formatter; }
+  LogFormatter::ptr getFormatter();
   LogLevel::Level getLevel() { return m_level; }
   void setLevel(LogLevel::Level val) { m_level = val; }
 
  protected:
   LogLevel::Level m_level = LogLevel::DEBUG;
   bool m_hasFormatter = false;
+  Mutextype m_mutex;
   LogFormatter::ptr m_formatter;
 };
 
@@ -177,6 +180,7 @@ class FileLogAppender : public LogAppender {
  private:
   std::string m_filename;
   std::ofstream m_filestream;
+  uint64_t m_last_time = 0;
 };
 // 日志器
 class Logger : public std::enable_shared_from_this<Logger> {
@@ -184,7 +188,7 @@ class Logger : public std::enable_shared_from_this<Logger> {
 
  public:
   using ptr = std::shared_ptr<Logger>;
-
+  using Mutextype = Mutex;
   Logger(const std::string& name = "root");
   void log(LogLevel::Level level, const LogEvent::ptr event);
 
@@ -208,6 +212,7 @@ class Logger : public std::enable_shared_from_this<Logger> {
   std::string toYamlString();
 
  private:
+  Mutextype m_mutex;
   std::string m_name;
   LogLevel::Level m_level;
   std::list<LogAppender::ptr> m_appenders;
@@ -217,6 +222,7 @@ class Logger : public std::enable_shared_from_this<Logger> {
 
 class LoggerManager {
  public:
+  using Mutextype = Mutex;
   LoggerManager();
   Logger::ptr getLogger(const std::string& name);
   std::string toYamlString();
@@ -226,6 +232,7 @@ class LoggerManager {
   Logger::ptr getRoot() const { return m_root; }
 
  private:
+  Mutextype m_mutex;
   std::map<std::string, Logger::ptr> m_loggers;
   Logger::ptr m_root;
 };

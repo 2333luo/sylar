@@ -124,6 +124,28 @@ struct WriteScopedLockImpl {
   bool m_locked;
 };
 
+class Mutex {
+ public:
+  using Lock = ScopedLockImpl<Mutex>;
+
+  Mutex() { pthread_mutex_init(&m_mutex, nullptr); }
+  ~Mutex() { pthread_mutex_destroy(&m_mutex); }
+  void lock() { pthread_mutex_lock(&m_mutex); }
+  void unlock() { pthread_mutex_unlock(&m_mutex); }
+
+ private:
+  pthread_mutex_t m_mutex;
+};
+
+class NullMutex {
+ public:
+  using Lock = ScopedLockImpl<NullMutex>;
+  NullMutex() {}
+  ~NullMutex() {}
+  void lock() {}
+  void unlock() {}
+};
+
 class RWMutex {
  public:
   using ReadLock = ReadScopedLockImpl<RWMutex>;
@@ -140,6 +162,32 @@ class RWMutex {
 
  private:
   pthread_rwlock_t m_lock;
+};
+
+class NullRWMutex {
+ public:
+  using ReadLock = ReadScopedLockImpl<NullRWMutex>;
+  using WriteLock = WriteScopedLockImpl<NullRWMutex>;
+  void rdlock() {}
+
+  void wrlock() {}
+
+  void unlock() {}
+};
+
+class SpinLock {
+ public:
+  using Lock = ScopedLockImpl<SpinLock>;
+  SpinLock() { pthread_spin_init(&m_mutex, 0); }
+
+  ~SpinLock() { pthread_spin_destroy(&m_mutex); }
+
+  void lock() { pthread_spin_lock(&m_mutex); }
+
+  void unlock() { pthread_spin_unlock(&m_mutex); }
+
+ private:
+  pthread_spinlock_t m_mutex;
 };
 
 class Thread {

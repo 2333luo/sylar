@@ -212,8 +212,15 @@ LogLevel::Level LogLevel::FromString(const std::string& str)
 #undef XX
 }
 
+LogFormatter::ptr LogAppender::getFormatter()
+{
+  Mutextype::Lock lock(m_mutex);
+  return m_formatter;
+}
+
 void LogAppender::setFormatter(LogFormatter::ptr val)
 {
+  Mutextype::Lock lock(m_mutex);
   m_formatter = val;
   if (m_formatter) {
     m_hasFormatter = true;
@@ -248,8 +255,10 @@ std::string Logger::toYamlString()
 
 void Logger::setFormatter(LogFormatter::ptr val)
 {
+  Mutextype::Lock lock(m_mutex);
   m_formatter = val;
   for (auto& a : m_appenders) {
+    Mutextype::Lock ll(a->m_mutex);
     if (!a->m_hasFormatter) {
       a->m_formatter = val;
     }
@@ -263,13 +272,20 @@ void Logger::setFormatter(const std::string& val)
     std::cout << "Logger setFormatter name=" << m_name << " value=" << val << " invalid formatter" << std::endl;
     return;
   }
-  m_formatter = new_val;
+  setFormatter(new_val);
 }
-LogFormatter::ptr Logger::getFormatter() { return m_formatter; }
+
+LogFormatter::ptr Logger::getFormatter()
+{
+  Mutextype::Lock lock(m_mutex);
+  return m_formatter;
+}
 
 void Logger::addAppender(LogAppender::ptr appender)
 {
+  Mutextype::Lock lock(m_mutex);
   if (!appender->getFormatter()) {
+    Mutextype::Lock ll(appender->m_mutex);
     appender->m_formatter = m_formatter;
   }
   m_appenders.push_back(appender);
@@ -277,6 +293,7 @@ void Logger::addAppender(LogAppender::ptr appender)
 
 void Logger::delAppender(LogAppender::ptr appender)
 {
+  Mutextype::Lock lock(m_mutex);
   for (auto itr = m_appenders.begin(); itr != m_appenders.end(); ++itr) {
     if (*itr == appender) {
       m_appenders.erase(itr);
@@ -284,12 +301,17 @@ void Logger::delAppender(LogAppender::ptr appender)
     }
   }
 }
-void Logger::clearAppender() { m_appenders.clear(); }
+void Logger::clearAppender()
+{
+  Mutextype::Lock lock(m_mutex);
+  m_appenders.clear();
+}
 
 void Logger::log(LogLevel::Level level, LogEvent::ptr event)
 {
   if (level >= m_level) {
     auto self = shared_from_this();
+    Mutextype::Lock lock(m_mutex);
     if (!m_appenders.empty()) {
       for (auto& i : m_appenders) {
         i->log(self, level, event);
@@ -313,7 +335,10 @@ void Logger::fatal(LogEvent::ptr event) { log(LogLevel::FATAL, event); }
 bool FileLogAppender::reopen()
 {
   if (m_filestream) {
-    m_filestream.close();
+    Mutextype::Lock lock(m_mutex);
+    if (m_filestream) {
+      m_filestream.close();
+    }
   }
   m_filestream.open(m_filename);
   return !m_filestream;
@@ -324,12 +349,20 @@ FileLogAppender::FileLogAppender(const std::string& filename) : m_filename(filen
 void FileLogAppender::log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event)
 {
   if (level >= m_level) {
+    uint64_t now = time(0);
+    if (now != m_last_time) {
+      reopen();
+      m_last_time = now;
+    }
+
+    Mutextype::Lock lock(m_mutex);
     m_filestream << m_formatter->format(logger, level, event);
   }
 }
 
 std::string FileLogAppender::toYamlString()
 {
+  Mutextype::Lock lock(m_mutex);
   YAML::Node node;
   node["type"] = "FileLogAppender";
   node["file"] = m_filename;
@@ -347,12 +380,14 @@ std::string FileLogAppender::toYamlString()
 void StdoutLogAppender::log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event)
 {
   if (level >= m_level) {
+    Mutextype::Lock lock(m_mutex);
     std::cout << m_formatter->format(logger, level, event);
   }
 }
 
 std::string StdoutLogAppender::toYamlString()
 {
+  Mutextype::Lock lock(m_mutex);
   YAML::Node node;
   node["type"] = "StdoutLogAppender";
   if (m_level != LogLevel::UNKNOW) {
@@ -487,6 +522,7 @@ LoggerManager::LoggerManager()
 
 std::string LoggerManager::toYamlString()
 {
+  Mutextype::Lock lock(m_mutex);
   YAML::Node node;
   for (auto& i : m_loggers) {
     node.push_back(YAML::Load(i.second->toYamlString()));
@@ -498,6 +534,7 @@ std::string LoggerManager::toYamlString()
 
 Logger::ptr LoggerManager::getLogger(const std::string& name)
 {
+  Mutextype::Lock lock(m_mutex);
   auto it = m_loggers.find(name);
   if (it != m_loggers.end()) {
     return it->second;

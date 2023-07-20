@@ -14,6 +14,7 @@ set(LIB_SRC
     src/log.cpp
     src/utils.cpp
     src/config.cpp
+    src/thread.cpp
     )
 
 add_library(sylar SHARED ${LIB_SRC})
@@ -29,6 +30,11 @@ add_executable(test_config tests/testconfig.cpp)
 add_dependencies(test_config sylar)
 force_redefine_file_macro_for_sources(test_config) #__FILE__
 target_link_libraries(test_config sylar yaml-cpp)
+
+add_executable(test_thread tests/testthread.cpp)
+add_dependencies(test_thread sylar)
+force_redefine_file_macro_for_sources(test_thread) #__FILE__
+target_link_libraries(test_thread sylar yaml-cpp)
 
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
