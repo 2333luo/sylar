@@ -169,7 +169,7 @@ void test_class()
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << prefix << ": size=" << m.size();                             \
   }
 
-  g_person->addListener(10, [](const Person &old_value, const Person &new_value) {
+  g_person->addListener([](const Person &old_value, const Person &new_value) {
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "old_value=" << old_value.toString() << " new_value=" << new_value.toString();
   });
 
@@ -203,5 +203,9 @@ int main()
   test_log();
   // test_config();
   // test_class();
+  sylar::Config::Visit([](sylar::ConfigVarBase::ptr var) {
+    SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "name=" << var->getName() << " description=" << var->getDescription()
+                                     << " Typename=" << var->getTypeName();
+  });
   return 0;
 }
