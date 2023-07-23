@@ -10,8 +10,9 @@ int main()
   auto logger = std::make_shared<sylar::Logger>();
   logger->addAppender(sylar::LogAppender::ptr(new sylar::StdoutLogAppender));
 
-  auto event = std::make_shared<sylar::LogEvent>(logger, sylar::LogLevel::DEBUG, __FILE__, __LINE__, 0,
-                                                 sylar::GetThreadId(), sylar::GetFiberId(), time(0));
+  auto event =
+      std::make_shared<sylar::LogEvent>(logger, sylar::LogLevel::DEBUG, __FILE__, __LINE__, 0, sylar::GetThreadId(),
+                                        sylar::GetFiberId(), time(0), sylar::Thread::GetName());
   auto file_appender = std::make_shared<sylar::FileLogAppender>("./log.txt");
 
   auto fmt = std::make_shared<LogFormatter>("%d%T%p%T%m%n");

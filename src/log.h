@@ -21,10 +21,11 @@ class LoggerManager;
 /**
  * @brief 使用流式方式将日志级别level的日志写入到logger
  */
-#define SYLAR_LOG_LEVEL(logger, level)                                                                               \
-  if (logger->getLevel() <= level)                                                                                   \
-  sylar::LogEventWrap(sylar::LogEvent::ptr(new sylar::LogEvent(logger, level, __FILE__, __LINE__, 0,                 \
-                                                               sylar::GetThreadId(), sylar::GetFiberId(), time(0)))) \
+#define SYLAR_LOG_LEVEL(logger, level)                                                                     \
+  if (logger->getLevel() <= level)                                                                         \
+  sylar::LogEventWrap(                                                                                     \
+      sylar::LogEvent::ptr(new sylar::LogEvent(logger, level, __FILE__, __LINE__, 0, sylar::GetThreadId(), \
+                                               sylar::GetFiberId(), time(0), sylar::Thread::GetName())))   \
       .getSS()
 
 #define SYLAR_LOG_DEBUG(logger) SYLAR_LOG_LEVEL(logger, sylar::LogLevel::DEBUG)
@@ -36,11 +37,12 @@ class LoggerManager;
 /**
  * @brief 使用格式化方式将日志级别level的日志写入到logger
  */
-#define SYLAR_LOG_FMT_LEVEL(logger, level, fmt, ...)                                                                 \
-  if (logger->getLevel() <= level)                                                                                   \
-  sylar::LogEventWrap(sylar::LogEvent::ptr(new sylar::LogEvent(logger, level, __FILE__, __LINE__, 0,                 \
-                                                               sylar::GetThreadId(), sylar::GetFiberId(), time(0)))) \
-      .getEvent()                                                                                                    \
+#define SYLAR_LOG_FMT_LEVEL(logger, level, fmt, ...)                                                       \
+  if (logger->getLevel() <= level)                                                                         \
+  sylar::LogEventWrap(                                                                                     \
+      sylar::LogEvent::ptr(new sylar::LogEvent(logger, level, __FILE__, __LINE__, 0, sylar::GetThreadId(), \
+                                               sylar::GetFiberId(), time(0), sylar::Thread::GetName())))   \
+      .getEvent()                                                                                          \
       ->format(fmt, __VA_ARGS__)
 
 #define SYLAR_LOG_FMT_DEBUG(logger, fmt, ...) SYLAR_LOG_FMT_LEVEL(logger, sylar::LogLevel::DEBUG, fmt, __VA_ARGS__)
@@ -65,7 +67,7 @@ class LogEvent {
  public:
   using ptr = std::shared_ptr<LogEvent>;
   LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level, const char* file, int32_t line, uint32_t elapse,
-           uint32_t thread_id, uint32_t fiber_id, uint64_t time);
+           uint32_t thread_id, uint32_t fiber_id, uint64_t time, const std::string& threadname);
   const char* getFile() const { return m_file; }
   int32_t getLine() const { return m_line; }
   uint32_t getElapse() const { return m_elapse; }
@@ -75,6 +77,7 @@ class LogEvent {
   const std::string getContent() const { return m_ss.str(); }
   std::shared_ptr<Logger> getLogger() const { return m_logger; }
   LogLevel::Level getLevel() const { return m_level; }
+  const std::string& getThreadName() const { return m_threadName; }
 
   std::stringstream& getSS() { return m_ss; }
 
@@ -90,6 +93,7 @@ class LogEvent {
   uint32_t m_threadId = 0;
   uint32_t m_fiberId = 0;
   uint32_t m_time;
+  std::string m_threadName;
   std::stringstream m_ss;
 };
 
